@@ -1,0 +1,163 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - staticcheck
+    - govet
+    - errorlint
+    - nilerr
+    - ineffassign
+    - wastedassign
+    - bodyclose
+    - sqlclosecheck
+    - unused 
+    - revive
+    - gocritic
+    - goconst
+    - whitespace
+    - wsl_v5
+    - nolintlint
+    - godot
+    - canonicalheader
+    - dupword
+    - gocyclo
+    - importas
+    - nakedret
+    - tagalign
+    - copyloopvar
+    - noctx
+    - durationcheck
+    - fatcontext
+    - iface
+    - makezero
+    - unconvert
+    - asasalint
+    - exptostd
+    - goheader
+    - intrange
+    - mirror
+    - usestdlibvars
+    - usetesting
+    - prealloc
+    - perfsprint
+    - gosec
+    - tparallel
+    - thelper
+    - testifylint
+    - misspell
+
+  settings:
+    gocognit:
+      min-complexity: 51
+    gocyclo:
+      min-complexity: 51
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    godot:
+      scope: toplevel
+    nakedret:
+      max-func-lines: 30
+    revive:
+      confidence: 0.8
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+    gosec:
+      excludes:
+        - G101 
+        - G404 
+        - G501 
+    testifylint:
+      expected-actual:
+        pattern: "^(exp|want)"
+      go-require:
+        ignore-http-handlers: true
+    misspell:
+      locale: US
+    tagalign:
+      align: true
+      sort: true
+      order:
+        - json
+        - yaml
+        - xml
+        - toml
+        - bson
+        - db
+        - validate
+  
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - funlen
+          - gocognit
+          - gocyclo
+          - gosec
+        path: _test\.go|.*_gen\.go|.*\.pb\.go
+      - linters:
+          - revive
+        path: _test\.go
+        text: comment on exported function
+      - linters:
+          - gosec
+        path: _test\.go
+        text: 'G104: Errors unhandled'
+    paths:
+      - .*\.gen\.go
+      - .*_mock\.go
+      - .*\.pb\.go
+      - third_party$
+      - builtin$
+      - examples$
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:  
+  formats:
+    html:
+      path: ./reports/golangci-lint.html
+  path-prefix: ""
+  path-mode: "abs"
+  sort-order:
+    - linter
+    - severity
+    - file
+  show-stats: false
+
+severity:
+  default: error
+  rules: []
+
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/0x5w4/go-app-template
+  exclusions:
+    generated: lax
+    paths:
+      - .*\.gen\.go
+      - .*_mock\.go
+      - .*\.pb\.go
+      - third_party$
+      - builtin$
+      - examples$
