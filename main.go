@@ -1,7 +1,7 @@
 package main
 
 import (
-	"goapptemp/cmd"
+	"order-service/cmd"
 )
 
 func main() {

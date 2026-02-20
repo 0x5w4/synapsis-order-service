@@ -4,22 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"goapptemp/config"
-	"goapptemp/internal/adapter/api/rest"
-	"goapptemp/internal/adapter/pubsub"
-	"goapptemp/internal/adapter/repository"
-	"goapptemp/internal/domain/service"
-	"goapptemp/internal/shared/token"
-	"goapptemp/pkg/apmtracer"
-	"goapptemp/pkg/bundb"
-	"goapptemp/pkg/logger"
+	"order-service/config"
+	"order-service/internal/adapter/repository"
+	rest "order-service/internal/adapter/restapi"
+	"order-service/internal/domain/service"
+	"order-service/pkg/apmtracer"
+	"order-service/pkg/bundb"
+	"order-service/pkg/logger"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
-
-	pubsubClient "goapptemp/pkg/pubsub"
 )
 
 type App struct {
@@ -27,7 +22,6 @@ type App struct {
 	restServer rest.Server
 	logger     logger.Logger
 	tracer     apmtracer.Tracer
-	pubsub     pubsubClient.Pubsub
 }
 
 func NewApp(config *config.Config, logger logger.Logger) (*App, error) {
@@ -50,7 +44,6 @@ func (a *App) Run() error {
 	defer cancel()
 
 	var (
-		wg  sync.WaitGroup
 		err error
 	)
 
@@ -72,43 +65,19 @@ func (a *App) Run() error {
 		return fmt.Errorf("failed to setup repository: %w", err)
 	}
 
-	// Initialize pubsub
-	var publisher pubsub.Publisher
-	if a.config.App.UsePubsub {
-		a.pubsub, err = pubsubClient.NewPubsub(ctx, a.config.Pubsub.ProjectID, a.config.Pubsub.CredFile)
-		if err != nil {
-			return fmt.Errorf("failed to setup pubsub client: %w", err)
-		}
-
-		publisher, err = pubsub.NewPublisher(a.logger, a.pubsub, a.config.Pubsub.TopicID)
-		if err != nil {
-			return fmt.Errorf("failed to setup pubsub publisher: %w", err)
-		}
-	}
-
-	// Initialize token
-	token, err := token.NewJwtToken(
-		a.config.Token.AccessSecretKey,
-		a.config.Token.RefreshSecretKey,
-		time.Duration(a.config.Token.AccessTokenDuration)*time.Minute,
-		time.Duration(a.config.Token.RefreshTokenDuration)*time.Minute,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create token manager: %w", err)
-	}
-
 	// Initialize service
-	service, err := service.NewService(a.config, repo, a.logger, token, publisher)
+	inventorySvcClient, err := newInventoryServiceClient(a.config)
+	if err != nil {
+		return fmt.Errorf("failed to create inventory service client: %w", err)
+	}
+
+	service, err := service.NewService(a.config, repo, a.logger, inventorySvcClient)
 	if err != nil {
 		return fmt.Errorf("failed to setup service: %w", err)
 	}
 
-	wg.Go(func() {
-		service.StaleTaskDetector().Start(ctx)
-	})
-
 	// Initialize and start REST server
-	a.restServer, err = rest.NewEchoServer(a.config, a.logger, token, service, repo)
+	a.restServer, err = rest.NewEchoServer(a.config, a.logger, service, repo)
 	if err != nil {
 		return fmt.Errorf("failed to setup server: %w", err)
 	}
@@ -133,25 +102,11 @@ func (a *App) Run() error {
 		a.logger.Info().Msg("REST server shut down gracefully")
 	}
 
-	// Wait for background tasks to finish
-	a.logger.Info().Msg("Waiting for background tasks to finish...")
-	wg.Wait()
-	a.logger.Info().Msg("All background tasks finished")
-
 	// Close repository
 	if err := repo.Close(); err != nil {
 		a.logger.Error().Err(err).Msg("Failed to gracefully close repository")
 	} else {
 		a.logger.Info().Msg("Repository closed gracefully")
-	}
-
-	// Shutdown pubsub client
-	if a.pubsub != nil {
-		if err := a.pubsub.Shutdown(); err != nil {
-			a.logger.Error().Err(err).Msg("Failed to gracefully shutdown PubSub client")
-		} else {
-			a.logger.Info().Msg("PubSub client shut down gracefully")
-		}
 	}
 
 	a.tracer.Shutdown()

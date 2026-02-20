@@ -3,8 +3,7 @@ package hook
 import (
 	"context"
 	"database/sql"
-	"goapptemp/constant"
-	"goapptemp/pkg/logger"
+	"order-service/pkg/logger"
 	"strings"
 	"time"
 
@@ -68,10 +67,27 @@ func (h *LoggerHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	}
 
 	var subLogger logger.Logger
-	if l, ok := ctx.Value(constant.CtxKeySubLogger).(logger.Logger); ok {
-		subLogger = l
+	if event.Err != nil {
+		subLogger = h.logger.WithFields(map[string]interface{}{
+			"error": event.Err.Error(),
+		})
 	} else {
 		subLogger = h.logger
+	}
+
+	query := event.Query
+	if len(query) > 500 {
+		query = query[:500] + "..."
+	}
+
+	subLogger.WithFields(map[string]interface{}{
+		"operation": event.Operation(),
+		"query":     query,
+		"duration":  duration.String(),
+	}).Info().Msg("SQL Query Executed")
+
+	if duration > h.slowQueryThreshold {
+		h.logger.Warn().Msgf("Slow query detected: %s", query)
 	}
 
 	var logEvent logger.LogEvent

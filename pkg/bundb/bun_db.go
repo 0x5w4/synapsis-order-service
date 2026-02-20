@@ -4,21 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"goapptemp/config"
-	"goapptemp/pkg/bundb/hook"
-	"goapptemp/pkg/logger"
 	"math"
+	"order-service/config"
+	"order-service/pkg/bundb/hook"
+	"order-service/pkg/logger"
 	"time"
 
-	migrationFS "goapptemp/migration"
+	migrationFS "order-service/migration"
 
 	"github.com/cockroachdb/errors"
 	migrate "github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/mysqldialect"
+	"github.com/uptrace/bun/dialect/pgdialect"
 )
 
 var _ BunDB = (*bunDB)(nil)
@@ -37,29 +38,20 @@ type bunDB struct {
 }
 
 func NewBunDB(config *config.Config, logger logger.Logger) (*bunDB, error) {
-	sqlDB, err := sql.Open("mysql", config.MySQL.DSN)
+	sqlDB, err := sql.Open("pgx", config.Postgres.DSN)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open mysql connection: %w", err)
+		return nil, fmt.Errorf("failed to open postgres connection: %w", err)
 	}
 
-	// NOTE: This context only used by ping
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
 	if err := sqlDB.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("failed to ping postgres: %w", err)
 	}
 
-	sqlDB.SetMaxOpenConns(config.MySQL.MaxOpenConns)
-	sqlDB.SetMaxIdleConns(config.MySQL.MaxIdleConns)
-	sqlDB.SetConnMaxLifetime(time.Duration(config.MySQL.ConnMaxLifetime) * time.Minute)
-
-	db := bun.NewDB(sqlDB, mysqldialect.New())
-	db.AddQueryHook(hook.NewLoggerHook(
-		hook.WithLogger(logger),
-		hook.WithDebug(config.MySQL.Debug),
-		hook.WithSlowQueryThreshold(time.Duration(config.MySQL.SlowQueryThreshold)*time.Millisecond),
-	))
+	db := bun.NewDB(sqlDB, pgdialect.New())
+	db.AddQueryHook(hook.NewLoggerHook(hook.WithLogger(logger), hook.WithDebug(config.App.Debug)))
 	db.AddQueryHook(hook.NewTracerHook())
 
 	return &bunDB{
@@ -87,7 +79,7 @@ func (d *bunDB) Migrate() error {
 		return fmt.Errorf("failed to create migration source from embed.FS: %w", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance("iofs", sourceInstance, d.config.MySQL.MigrateDSN)
+	m, err := migrate.NewWithSourceInstance("iofs", sourceInstance, d.config.Postgres.MigrateDSN)
 	if err != nil {
 		return fmt.Errorf("cannot create migration instance: %w", err)
 	}
@@ -141,7 +133,7 @@ func (d *bunDB) Reset() error {
 		return fmt.Errorf("failed to create migration source from embed.FS: %w", err)
 	}
 
-	m, err := migrate.NewWithSourceInstance("iofs", sourceInstance, d.config.MySQL.MigrateDSN)
+	m, err := migrate.NewWithSourceInstance("iofs", sourceInstance, d.config.Postgres.MigrateDSN)
 	if err != nil {
 		return fmt.Errorf("cannot create migration instance for drop: %w", err)
 	}

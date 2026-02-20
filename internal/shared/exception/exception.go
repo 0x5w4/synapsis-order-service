@@ -233,3 +233,18 @@ func getJsonPathFromNamespace(rootType reflect.Type, namespace string) string {
 
 	return strings.Join(jsonPathParts, ".")
 }
+
+func handleDBError(err error, tableName, operation string) error {
+	if err == nil {
+		return nil
+	}
+
+	// Wrap the error with additional context about the table and operation
+	return Wrap(err, TypeQueryError, "DB_ERROR", fmt.Sprintf("Error during %s on table %s: %v", operation, tableName, err))
+}
+
+// NewDBError creates a database-specific error.
+func NewDBError(err error, table string, operation string) error {
+	message := fmt.Sprintf("Database error on table '%s' during '%s': %v", table, operation, err)
+	return Wrap(err, "DB_ERROR", "DB001", message)
+}

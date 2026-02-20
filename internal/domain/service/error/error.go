@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"goapptemp/internal/shared/exception"
+	"order-service/internal/shared/exception"
 	"regexp"
 	"strings"
 

@@ -26,12 +26,13 @@ func (h *TracerHook) BeforeQuery(ctx context.Context, event *bun.QueryEvent) con
 func (h *TracerHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	span := apm.SpanFromContext(ctx)
 	if span != nil {
-		truncatedQuery := event.Query
-		if len(truncatedQuery) > 100 {
-			truncatedQuery = truncatedQuery[:100] + "..."
+		if len(event.Query) > 100 {
+			truncatedQuery := event.Query[:100] + "..."
+			span.Context.SetLabel("query", truncatedQuery)
+		} else {
+			span.Context.SetLabel("query", event.Query)
 		}
 
-		span.Context.SetLabel("query", truncatedQuery)
 		span.End()
 	}
 }
