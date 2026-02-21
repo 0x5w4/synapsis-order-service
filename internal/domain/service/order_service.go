@@ -19,17 +19,17 @@ type OrderService interface {
 }
 
 type orderService struct {
-	properties
+	Properties
 }
 
-func NewOrderService(props properties) *orderService {
+func NewOrderService(props Properties) *orderService {
 	return &orderService{
-		properties: props,
+		Properties: props,
 	}
 }
 
 func (s *orderService) FindByID(ctx context.Context, id uint32) (*entity.Order, error) {
-	order, err := s.repo.Postgres().Order().FindByID(ctx, id)
+	order, err := s.Repo.Postgres().Order().FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (s *orderService) FindByID(ctx context.Context, id uint32) (*entity.Order, 
 }
 
 func (s *orderService) Find(ctx context.Context, userID uint32, page, perPage int) ([]*entity.Order, int, error) {
-	orders, total, err := s.repo.Postgres().Order().Find(ctx, &postgresrepository.FilterOrderPayload{
+	orders, total, err := s.Repo.Postgres().Order().Find(ctx, &postgresrepository.FilterOrderPayload{
 		UserID:  userID,
 		Page:    page,
 		PerPage: perPage,
@@ -56,7 +56,7 @@ func (s *orderService) Find(ctx context.Context, userID uint32, page, perPage in
 func (s *orderService) Create(ctx context.Context, order *entity.Order) (*entity.Order, error) {
 	var totalPrice float64
 	for i, item := range order.Items {
-		product, err := s.inventoryServiceClient.GetProduct(ctx, &pb.GetProductRequest{Id: item.ID})
+		product, err := s.InventoryServiceClient.GetProduct(ctx, &pb.GetProductRequest{Id: item.ID})
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +73,7 @@ func (s *orderService) Create(ctx context.Context, order *entity.Order) (*entity
 	order.TotalPrice = totalPrice
 	order.Status = string(constant.OrderStatusConfirmed)
 
-	createdOrder, err := s.repo.Postgres().Order().Create(ctx, order)
+	createdOrder, err := s.Repo.Postgres().Order().Create(ctx, order)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (s *orderService) Cancel(ctx context.Context, id uint32) error {
 		reservationIDs = append(reservationIDs, item.ID)
 	}
 
-	_, err = s.inventoryServiceClient.UpdateReservationStatus(ctx, &pb.UpdateReservationStatusRequest{
+	_, err = s.InventoryServiceClient.UpdateReservationStatus(ctx, &pb.UpdateReservationStatusRequest{
 		Ids:    reservationIDs,
 		Status: pb.ReservationStatus_RESERVATION_STATUS_CANCELLED,
 	})
@@ -104,5 +104,5 @@ func (s *orderService) Cancel(ctx context.Context, id uint32) error {
 		return err
 	}
 
-	return s.repo.Postgres().Order().UpdateStatus(ctx, id, string(constant.OrderStatusCancelled))
+	return s.Repo.Postgres().Order().UpdateStatus(ctx, id, string(constant.OrderStatusCancelled))
 }

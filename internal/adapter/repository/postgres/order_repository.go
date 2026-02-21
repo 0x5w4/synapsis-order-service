@@ -2,6 +2,8 @@ package postgresrepository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"order-service/internal/adapter/repository/postgres/model"
 	"order-service/internal/domain/entity"
 	"order-service/internal/shared/exception"
@@ -44,7 +46,7 @@ type FilterOrderPayload struct {
 func (r *orderRepository) Find(ctx context.Context, filter *FilterOrderPayload) ([]*entity.Order, int, error) {
 	var orders []*model.Order
 
-	query := r.db.NewSelect().Model(&orders)
+	query := r.db.NewSelect().Model(&orders).Relation("Items")
 
 	if len(filter.IDs) > 0 {
 		query = query.Where("id IN (?)", bun.In(filter.IDs))
@@ -81,14 +83,13 @@ func (r *orderRepository) Find(ctx context.Context, filter *FilterOrderPayload) 
 }
 
 func (r *orderRepository) FindByID(ctx context.Context, id uint32) (*entity.Order, error) {
-	if id == 0 {
-		return nil, exception.ErrIDNull
-	}
-
-	order := &model.Order{Base: model.Base{ID: id}}
-
-	if err := r.db.NewSelect().Model(order).WherePK().Scan(ctx); err != nil {
-		return nil, exception.NewDBError(err, r.GetTableName(), "find order by id")
+	var order model.Order
+	err := r.db.NewSelect().Model(&order).Where("id = ?", id).Relation("Items").Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, exception.NewDBError(err, r.GetTableName(), "FindByID")
 	}
 
 	return order.ToDomain(), nil

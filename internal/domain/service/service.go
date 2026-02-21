@@ -13,15 +13,15 @@ type Service interface {
 	Order() OrderService
 }
 
-type properties struct {
-	config                 *config.Config
-	repo                   repository.Repository
-	logger                 logger.Logger
-	inventoryServiceClient pb.InventoryServiceClient
+type Properties struct {
+	Config                 *config.Config
+	Repo                   repository.Repository
+	Logger                 logger.Logger
+	InventoryServiceClient pb.InventoryServiceClient
 }
 
 type service struct {
-	properties
+	Properties
 	orderService OrderService
 }
 
@@ -31,15 +31,15 @@ func NewService(
 	logger logger.Logger,
 	inventoryServiceClient pb.InventoryServiceClient,
 ) (*service, error) {
-	props := properties{
-		config:                 config,
-		repo:                   repo,
-		logger:                 logger,
-		inventoryServiceClient: inventoryServiceClient,
+	props := Properties{
+		Config:                 config,
+		Repo:                   repo,
+		Logger:                 logger,
+		InventoryServiceClient: inventoryServiceClient,
 	}
 
 	return &service{
-		properties:   props,
+		Properties:   props,
 		orderService: NewOrderService(props),
 	}, nil
 }
