@@ -24,7 +24,6 @@ WORKDIR /app
 
 COPY --from=builder /go-app-temp /app/go-app-temp
 COPY .env /app/.env
-COPY cred.json /app/cred.json
 RUN mkdir -p migration
 COPY migration/* migration/
 
