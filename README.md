@@ -1,18 +1,21 @@
 # synapsis-order-service
 
 ## Overview
-The `synapsis-order-service` is a Go-based microservice designed to manage orders. It provides RESTful APIs for creating, retrieving, and managing orders, and integrates with an inventory service via gRPC.
+The `synapsis-order-service` is a Go-based microservice designed to manage orders. It provides RESTful APIs for creating, retrieving, and managing orders, and integrates with an inventory service via gRPC. The service is built with scalability and maintainability in mind, leveraging modern tools and frameworks.
 
 ## Features
-- Create, retrieve, and cancel orders.
-- Integration with an inventory service for stock validation.
-- Database persistence using PostgreSQL.
-- Elastic APM tracing for observability.
+- **Order Management**: Create, retrieve, and cancel orders.
+- **Inventory Integration**: Validate stock availability via gRPC calls to the inventory service.
+- **Database Persistence**: Store and manage order data using PostgreSQL.
+- **Observability**: Elastic APM tracing for monitoring and debugging.
+- **Validation**: Input validation for API requests.
+- **Error Handling**: Consistent and structured error responses.
 
 ## Prerequisites
-- Go 1.18 or later
-- PostgreSQL 13 or later
-- `protoc` (Protocol Buffers Compiler) for gRPC code generation
+- **Go**: Version 1.18 or later.
+- **PostgreSQL**: Version 13 or later.
+- **Protocol Buffers Compiler**: `protoc` for generating gRPC code.
+- **Make**: For running predefined tasks.
 
 ## Setup Instructions
 
@@ -45,10 +48,17 @@ make migrate-up
 make run
 ```
 
+### 6. Generate gRPC Code (if needed)
+If you modify the `.proto` files, regenerate the gRPC code:
+```bash
+protoc --go_out=. --go-grpc_out=. proto/*.proto
+```
+
 ## API Endpoints
 
 ### 1. Create Order
 **POST** `/api/v1/orders`
+- **Description**: Create a new order.
 - **Request Body**:
 ```json
 {
@@ -71,6 +81,10 @@ make run
 
 ### 2. List Orders
 **GET** `/api/v1/orders`
+- **Description**: Retrieve a list of all orders.
+- **Query Parameters**:
+  - `page` (optional): Page number for pagination.
+  - `perPage` (optional): Number of items per page.
 - **Response**:
 ```json
 [
@@ -83,6 +97,7 @@ make run
 
 ### 3. Get Order Details
 **GET** `/api/v1/orders/:id`
+- **Description**: Retrieve details of a specific order.
 - **Response**:
 ```json
 {
@@ -99,6 +114,7 @@ make run
 
 ### 4. Cancel Order
 **POST** `/api/v1/orders/:id/cancel`
+- **Description**: Cancel an existing order.
 - **Response**:
 ```json
 {
@@ -119,8 +135,55 @@ make test
 make test-integration
 ```
 
-## Contributing
-Contributions are welcome! Please submit a pull request or open an issue for discussion.
+### Test Coverage
+To check test coverage:
+```bash
+go test -cover ./...
+```
+
+## Development
+
+### Code Structure
+- **cmd/**: Entry point for the application.
+- **config/**: Configuration files and utilities.
+- **internal/**: Core application logic, including adapters and domain services.
+- **pkg/**: Shared libraries and utilities.
+- **proto/**: Protocol Buffers definitions and generated gRPC code.
+- **migration/**: Database migration scripts.
+
+### Common Commands
+- **Run the application**:
+  ```bash
+  make run
+  ```
+- **Run database migrations**:
+  ```bash
+  make migrate-up
+  ```
+- **Rollback migrations**:
+  ```bash
+  make migrate-down
+  ```
+- **Generate mocks**:
+  ```bash
+  mockery --all --output=mocks
+  ```
+
+
+### Code Style
+- Follow the Go coding standards.
+- Use `golangci-lint` for linting:
+  ```bash
+  golangci-lint run
+  ```
+
+## Observability
+
+### Elastic APM
+The service integrates with Elastic APM for tracing. Ensure the `APM_SERVER_URL` environment variable is set correctly.
+
+### Logs
+Logs are written to the console in JSON format. Use a log aggregator for centralized logging.
 
 ## License
 This project is licensed under the MIT License.
