@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"order-service/config"
+	"order-service/internal/adapter/grpcclient"
 	"order-service/internal/adapter/repository"
 	rest "order-service/internal/adapter/restapi"
 	"order-service/internal/domain/service"
@@ -66,7 +67,7 @@ func (a *App) Run() error {
 	}
 
 	// Initialize service
-	inventorySvcClient, err := newInventoryServiceClient(a.config)
+	inventorySvcClient, err := grpcclient.NewInventoryServiceClient(a.config)
 	if err != nil {
 		return fmt.Errorf("failed to create inventory service client: %w", err)
 	}
