@@ -1,4 +1,4 @@
-FROM golang:1.25.1-alpine3.22 AS builder
+FROM golang:1.25.1-alpine3.21 AS builder
 WORKDIR /app
 
 ENV CGO_ENABLED=0
@@ -13,7 +13,7 @@ COPY . .
 RUN go build -ldflags="-compressdwarf -extldflags '-static'" -a -o /go-app-temp .
 
 
-FROM alpine:3.22
+FROM alpine:3.21
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
